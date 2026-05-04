@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Accounts</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f7f5f0; --card: #ffffff; --border: #e8e4dc;
+    --text: #1a1a18; --muted: #7a7870;
+    --income-color: #1D9E75; --expense-color: #E24B4A; --accent: #3266ad;
+    --radius: 14px; --font: 'Georgia', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1a1917; --card: #252422; --border: #353330; --text: #f0ede6; --muted: #9a9790; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+  #setupScreen { padding: 28px 20px; max-width: 480px; margin: 0 auto; }
+  .setup-title { font-family: var(--font); font-size: 26px; font-weight: normal; margin-bottom: 6px; }
+  .setup-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; line-height: 1.7; }
+  .setup-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .setup-step { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .setup-card p { font-size: 14px; line-height: 1.7; margin-bottom: 10px; }
+  .setup-card a { color: var(--accent); }
+  .setup-card code { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; font-size: 13px; }
+  .setup-input { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 14px; background: var(--bg); color: var(--text); margin-bottom: 10px; }
+  .setup-input:focus { outline: none; border-color: var(--accent); }
+  .input-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; display: block; }
+  .primary-btn { width: 100%; padding: 13px; background: var(--text); color: var(--bg); border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
+  .primary-btn:hover { opacity: 0.85; }
+  .setup-note { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+
+  #authScreen { padding: 60px 20px 28px; max-width: 480px; margin: 0 auto; text-align: center; }
+  .auth-icon { font-size: 48px; margin-bottom: 16px; }
+  .auth-title { font-family: var(--font); font-size: 24px; font-weight: normal; margin-bottom: 8px; }
+  .auth-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; line-height: 1.6; }
+  .google-btn { display: inline-flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 13px 24px; font-size: 16px; font-weight: 500; color: var(--text); cursor: pointer; }
+  .google-btn:hover { background: var(--border); }
+  .change-link { background: none; border: none; color: var(--muted); font-size: 13px; cursor: pointer; margin-top: 20px; text-decoration: underline; display: block; width: 100%; }
+
+  #appScreen { display: none; }
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 16px 10px; position: sticky; top: 0; z-index: 100; }
+  .header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .app-title { font-family: var(--font); font-size: 20px; font-weight: normal; }
+  .header-actions { display: flex; gap: 8px; }
+  .icon-btn { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px; color: var(--text); cursor: pointer; }
+  .icon-btn:hover { background: var(--border); }
+  .sync-bar { font-size: 11px; color: var(--muted); margin-top: 4px; min-height: 15px; }
+  .sync-bar.syncing { color: var(--accent); }
+  .sync-bar.ok { color: var(--income-color); }
+  .sync-bar.err { color: var(--expense-color); }
+  .month-nav { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .month-nav button { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 14px; color: var(--text); cursor: pointer; }
+  .month-nav button:hover { background: var(--border); }
+  .month-label { font-size: 15px; font-weight: 500; min-width: 110px; text-align: center; }
+
+  .summary-strip { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 14px 14px 6px; }
+  .scard { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 8px; text-align: center; }
+  .scard-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .scard-val { font-size: 16px; font-weight: 600; }
+  .green { color: var(--income-color); } .red { color: var(--expense-color); } .blue { color: var(--accent); }
+
+  .tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 80px; z-index: 99; }
+  .tab { flex: 1; padding: 10px 0; text-align: center; font-size: 14px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); }
+
+  .tab-content { padding: 14px; display: none; }
+  .tab-content.active { display: block; }
+  .section-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+
+  .entry-form { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 14px; }
+  .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .form-group label { font-size: 12px; color: var(--muted); }
+  .form-group input, .form-group select { border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 15px; background: var(--bg); color: var(--text); -webkit-appearance: none; appearance: none; width: 100%; }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+  .type-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .type-toggle button { flex: 1; padding: 9px; border: none; background: none; font-size: 14px; color: var(--muted); cursor: pointer; }
+  .type-toggle button.ae { background: #FCEBEB; color: #A32D2D; font-weight: 600; }
+  .type-toggle button.ai { background: #E1F5EE; color: #0F6E56; font-weight: 600; }
+  @media (prefers-color-scheme: dark) {
+    .type-toggle button.ai { background: #085041; color: #9FE1CB; }
+    .type-toggle button.ae { background: #501313; color: #F7C1C1; }
+  }
+  .add-btn { width: 100%; padding: 12px; background: var(--text); color: var(--bg); border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
+  .add-btn:hover { opacity: 0.85; }
+
+  .txn-list { display: flex; flex-direction: column; gap: 6px; }
+  .txn-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; display: flex; align-items: center; gap: 10px; }
+  .txn-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+  .txn-info { flex: 1; min-width: 0; }
+  .txn-desc { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .txn-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .txn-amt { font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .txn-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 4px; }
+  .txn-del:hover { color: var(--expense-color); }
+  .empty-state { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 0; }
+
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 14px; }
+  .chart-title { font-size: 14px; font-weight: 500; margin-bottom: 12px; }
+  .pie-wrap { position: relative; width: 100%; height: 210px; }
+  .legend { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+  .legend-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .legend-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .legend-name { flex: 1; }
+  .legend-pct { color: var(--muted); min-width: 36px; text-align: right; }
+  .legend-amt { font-weight: 500; min-width: 70px; text-align: right; }
+  .cat-breakdown { display: flex; flex-direction: column; gap: 7px; }
+  .cat-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .cat-emoji { font-size: 19px; width: 26px; text-align: center; }
+  .cat-info { flex: 1; }
+  .cat-name { font-size: 13px; font-weight: 500; }
+  .cat-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; margin-top: 4px; }
+  .cat-bar { height: 3px; border-radius: 2px; }
+  .cat-amt { font-size: 14px; font-weight: 600; }
+  .cat-pct { font-size: 11px; color: var(--muted); text-align: right; }
+  .no-data { text-align: center; color: var(--muted); font-size: 14px; padding: 30px 0; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setupScreen" style="display:none">
+  <div class="setup-title">Accounts</div>
+  <div class="setup-sub">One-time Google Cloud setup. Your data is stored only in your own Google Drive — no third-party servers.</div>
+
+  <div class="setup-card">
+    <div class="setup-step">Step 1 — Google Cloud Console</div>
+    <p>Go to <a href="https://console.cloud.google.com/" target="_blank">console.cloud.google.com</a> and create a new project (or use an existing one).</p>
+    <p>In <strong>APIs &amp; Services → Library</strong>, search for and enable the <strong>Google Drive API</strong>.</p>
+    <p>In <strong>APIs &amp; Services → OAuth consent screen</strong>, set type to <strong>External</strong>, fill in app name (e.g. "My Accounts"), and add your own Google account as a test user.</p>
+  </div>
+
+  <div class="setup-card">
+    <div class="setup-step">Step 2 — Create OAuth Client ID</div>
+    <p>Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth Client ID</strong>.</p>
+    <p>Choose <strong>Web application</strong>. Under <em>Authorised JavaScript origins</em>, add the exact URL where this file lives. If opening locally add <code>http://localhost</code>. If hosted, add your full URL.</p>
+    <p>Leave redirect URIs blank. Click Create and copy the <strong>Client ID</strong>.</p>
+  </div>
+
+  <div class="setup-card">
+    <div class="setup-step">Step 3 — Paste Client ID here</div>
+    <label class="input-label">Your OAuth 2.0 Client ID</label>
+    <input class="setup-input" id="clientIdInput" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com" />
+    <button class="primary-btn" onclick="saveClientId()">Save &amp; Continue →</button>
+    <p class="setup-note">Saved only in your browser's localStorage. Never transmitted anywhere except Google's own servers during OAuth.</p>
+  </div>
+</div>
+
+<!-- AUTH -->
+<div id="authScreen" style="display:none">
+  <div class="auth-icon">📒</div>
+  <div class="auth-title">Accounts</div>
+  <div class="auth-sub">Sign in with Google to load your data and enable Drive sync. Data is stored in your Drive's hidden app folder.</div>
+  <button class="google-btn" onclick="signIn()">
+    <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.8 2.5 30.3 0 24 0 14.6 0 6.6 5.4 2.8 13.3l7.9 6.1C12.5 13.2 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.1-.4-4.5H24v8.6h12.9c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.3-10.1 7.3-17.1z"/><path fill="#FBBC05" d="M10.7 28.6A14.6 14.6 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6L2.4 13.3A23.9 23.9 0 0 0 0 24c0 3.8.9 7.4 2.5 10.6l8.2-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.2 0-11.5-3.7-13.3-9.1l-8.2 6C6.6 42.6 14.6 48 24 48z"/></svg>
+    Sign in with Google
+  </button>
+  <button class="change-link" onclick="showSetup()">Change Client ID</button>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <header>
+    <div class="header-row">
+      <span class="app-title">Accounts</span>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="syncNow()">↻ Sync</button>
+        <button class="icon-btn" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+    <div class="sync-bar" id="syncStatus"></div>
+    <div class="month-nav">
+      <button onclick="changeMonth(-1)">←</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button onclick="changeMonth(1)">→</button>
+    </div>
+  </header>
+
+  <div class="summary-strip">
+    <div class="scard"><div class="scard-label">Income</div><div class="scard-val green" id="sumIncome">₹0</div></div>
+    <div class="scard"><div class="scard-label">Spend</div><div class="scard-val red" id="sumExpense">₹0</div></div>
+    <div class="scard"><div class="scard-label">Balance</div><div class="scard-val blue" id="sumBalance">₹0</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('add')">Add</div>
+    <div class="tab" onclick="switchTab('txns')">Transactions</div>
+    <div class="tab" onclick="switchTab('chart')">Chart</div>
+  </div>
+
+  <div id="tab-add" class="tab-content active">
+    <div class="entry-form">
+      <div class="form-row">
+        <div class="form-group" style="flex:none;width:100%">
+          <label>Type</label>
+          <div class="type-toggle">
+            <button id="btn-expense" class="ae" onclick="setType('expense')">↓ Expense</button>
+            <button id="btn-income" onclick="setType('income')">↑ Income</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="desc" placeholder="e.g. Groceries" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <input type="number" id="amount" placeholder="0" inputmode="decimal" />
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="category"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="date" />
+        </div>
+      </div>
+      <button class="add-btn" onclick="addEntry()">Add Entry</button>
+    </div>
+  </div>
+
+  <div id="tab-txns" class="tab-content">
+    <div class="section-title">Transactions this month</div>
+    <div class="txn-list" id="txnList"></div>
+    <div class="empty-state" id="emptyTxn" style="display:none">No transactions this month</div>
+  </div>
+
+  <div id="tab-chart" class="tab-content">
+    <div class="chart-card">
+      <div class="chart-title">Expenditure breakdown</div>
+      <div class="pie-wrap">
+        <canvas id="pieChart" role="img" aria-label="Pie chart showing expenditure by category"></canvas>
+      </div>
+      <div class="legend" id="pieLegend"></div>
+    </div>
+    <div class="section-title">By category</div>
+    <div class="cat-breakdown" id="catBreakdown"></div>
+    <div class="no-data" id="noData" style="display:none">No expense data this month</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+const DRIVE_FILE = 'accounts_data.json';
+const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const CATS = {
+  expense:[
+    {id:'food',     name:'Food & Dining',    emoji:'🍽️',color:'#E24B4A'},
+    {id:'transport',name:'Transport',         emoji:'🚗',color:'#D85A30'},
+    {id:'groceries',name:'Groceries',         emoji:'🛒',color:'#BA7517'},
+    {id:'health',   name:'Health',            emoji:'💊',color:'#1D9E75'},
+    {id:'utilities',name:'Utilities',         emoji:'💡',color:'#185FA5'},
+    {id:'shopping', name:'Shopping',          emoji:'🛍️',color:'#7F77DD'},
+    {id:'entertain',name:'Entertainment',     emoji:'🎬',color:'#D4537E'},
+    {id:'education',name:'Education',         emoji:'📚',color:'#378ADD'},
+    {id:'rent',     name:'Rent / EMI',        emoji:'🏠',color:'#5F5E5A'},
+    {id:'other_e',  name:'Other',             emoji:'📦',color:'#888780'},
+  ],
+  income:[
+    {id:'salary',   name:'Salary',    emoji:'💼',color:'#1D9E75'},
+    {id:'freelance',name:'Freelance', emoji:'💻',color:'#0F6E56'},
+    {id:'invest',   name:'Investment',emoji:'📈',color:'#185FA5'},
+    {id:'rental',   name:'Rental',    emoji:'🏠',color:'#378ADD'},
+    {id:'other_i',  name:'Other',     emoji:'💰',color:'#639922'},
+  ]
+};
+
+let token=null, fileId=null, allData={}, currentType='expense';
+let currentMonth=new Date().toISOString().slice(0,7);
+let pieChart=null, syncTimer=null;
+let clientId=localStorage.getItem('gd_client_id')||'';
+
+window.onload=()=>{ clientId ? showAuth() : showSetup(); };
+
+function show(id){document.getElementById(id).style.display='';}
+function hide(id){document.getElementById(id).style.display='none';}
+function showSetup(){ hide('authScreen');hide('appScreen');show('setupScreen'); document.getElementById('clientIdInput').value=clientId; }
+function showAuth(){ hide('setupScreen');hide('appScreen');show('authScreen'); initGsi(); }
+function saveClientId(){ const v=document.getElementById('clientIdInput').value.trim(); if(!v){toast('Enter a Client ID');return;} clientId=v; localStorage.setItem('gd_client_id',v); showAuth(); }
+
+let tokenClient;
+function initGsi(){ if(!window.google){setTimeout(initGsi,400);return;} tokenClient=google.accounts.oauth2.initTokenClient({client_id:clientId,scope:SCOPE,callback:onToken}); }
+function signIn(){ if(!tokenClient){initGsi();setTimeout(signIn,600);return;} tokenClient.requestAccessToken({prompt:''}); }
+function onToken(r){ if(r.error){toast('Sign-in error: '+r.error);return;} token=r.access_token; hide('authScreen');show('appScreen'); document.getElementById('date').value=new Date().toISOString().slice(0,10); buildCatSelect();updateMonthLabel();loadDrive(); }
+function signOut(){ if(token&&window.google)google.accounts.oauth2.revoke(token,()=>{}); token=null;fileId=null;allData={}; hide('appScreen');showAuth(); }
+
+async function req(url,opts={}){ const h={'Authorization':'Bearer '+token,...(opts.headers||{})}; const r=await fetch(url,{...opts,headers:h}); if(r.status===401){toast('Session expired');signOut();throw new Error('401');} return r; }
+
+async function findFile(){ const r=await req(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'${DRIVE_FILE}'&fields=files(id)`); const d=await r.json(); return d.files&&d.files.length?d.files[0].id:null; }
+async function readFile(id){ const r=await req(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`); return r.json(); }
+async function createFile(data){ const meta=JSON.stringify({name:DRIVE_FILE,parents:['appDataFolder']}),body=JSON.stringify(data),b='bnd'+Date.now(); const mp=`--${b}\r\nContent-Type:application/json\r\n\r\n${meta}\r\n--${b}\r\nContent-Type:application/json\r\n\r\n${body}\r\n--${b}--`; const r=await req('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${b}`},body:mp}); return(await r.json()).id; }
+async function updateFile(id,data){ await req(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); }
+
+function setSyncStatus(msg,cls){ const el=document.getElementById('syncStatus'); el.textContent=msg; el.className='sync-bar '+(cls||''); }
+
+async function loadDrive(){
+  setSyncStatus('Loading from Drive…','syncing');
+  try {
+    fileId=await findFile();
+    if(fileId){ allData=await readFile(fileId); localStorage.setItem('accts_cache',JSON.stringify(allData)); }
+    else{ const c=localStorage.getItem('accts_cache'); if(c)allData=JSON.parse(c); }
+    setSyncStatus('✓ Synced with Drive','ok'); render();
+  } catch(e){
+    if(e.message==='401')return;
+    const c=localStorage.getItem('accts_cache'); if(c){allData=JSON.parse(c);render();}
+    setSyncStatus('⚠ Offline — using local cache','err');
+  }
+}
+
+async function saveDrive(){
+  if(!token)return;
+  setSyncStatus('Saving…','syncing');
+  try {
+    if(fileId) await updateFile(fileId,allData);
+    else fileId=await createFile(allData);
+    localStorage.setItem('accts_cache',JSON.stringify(allData));
+    setSyncStatus('✓ Saved to Drive','ok');
+  } catch(e){
+    if(e.message==='401')return;
+    localStorage.setItem('accts_cache',JSON.stringify(allData));
+    setSyncStatus('⚠ Saved locally — Drive sync failed','err');
+  }
+}
+
+function scheduleSave(){ clearTimeout(syncTimer); syncTimer=setTimeout(saveDrive,1000); }
+async function syncNow(){ await loadDrive(); toast('Refreshed from Drive'); }
+
+function fmt(n){ return '₹'+Math.abs(n).toLocaleString('en-IN',{maximumFractionDigits:0}); }
+function getEntries(){ return allData[currentMonth]||[]; }
+function setEntries(a){ allData[currentMonth]=a; }
+
+function updateMonthLabel(){ const[y,m]=currentMonth.split('-'); document.getElementById('monthLabel').textContent=new Date(+y,+m-1,1).toLocaleString('default',{month:'long',year:'numeric'}); }
+function changeMonth(d){ const[y,m]=currentMonth.split('-').map(Number),dt=new Date(y,m-1+d,1); currentMonth=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); updateMonthLabel();render(); }
+
+function setType(t){ currentType=t; document.getElementById('btn-expense').className=t==='expense'?'ae':''; document.getElementById('btn-income').className=t==='income'?'ai':''; buildCatSelect(); }
+function buildCatSelect(){ const s=document.getElementById('category'); s.innerHTML=''; CATS[currentType].forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.emoji+' '+c.name;s.appendChild(o);}); }
+function getCat(id){ for(const t of['expense','income']){const f=CATS[t].find(c=>c.id===id);if(f)return f;} return{name:id,emoji:'📦',color:'#888'}; }
+
+function addEntry(){
+  const desc=document.getElementById('desc').value.trim();
+  const amt=parseFloat(document.getElementById('amount').value);
+  const cat=document.getElementById('category').value;
+  const date=document.getElementById('date').value||currentMonth+'-01';
+  if(!desc||!amt||isNaN(amt)||amt<=0){toast('Fill in description and amount');return;}
+  const entries=getEntries(); entries.push({id:Date.now(),type:currentType,desc,amt,cat,date});
+  setEntries(entries); scheduleSave();
+  document.getElementById('desc').value=''; document.getElementById('amount').value='';
+  render(); toast('Added ✓');
+}
+
+function deleteEntry(id){ setEntries(getEntries().filter(e=>e.id!==id)); scheduleSave(); render(); }
+
+function render(){
+  const entries=getEntries();
+  const inc=entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amt,0);
+  const exp=entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amt,0);
+  const bal=inc-exp;
+  document.getElementById('sumIncome').textContent=fmt(inc);
+  document.getElementById('sumExpense').textContent=fmt(exp);
+  const bel=document.getElementById('sumBalance'); bel.textContent=fmt(bal); bel.style.color=bal>=0?'var(--income-color)':'var(--expense-color)';
+  renderTxns(entries); renderChart(entries,exp);
+}
+
+function renderTxns(entries){
+  const list=document.getElementById('txnList'),empty=document.getElementById('emptyTxn');
+  const sorted=[...entries].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+  if(!sorted.length){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML=sorted.map(e=>{
+    const c=getCat(e.cat),isInc=e.type==='income',bg=isInc?'#E1F5EE':'#FCEBEB';
+    return`<div class="txn-item"><div class="txn-icon" style="background:${bg}">${c.emoji}</div><div class="txn-info"><div class="txn-desc">${e.desc}</div><div class="txn-meta">${c.name} · ${e.date}</div></div><div class="txn-amt ${isInc?'green':'red'}">${isInc?'+':'-'}${fmt(e.amt)}</div><button class="txn-del" onclick="deleteEntry(${e.id})">×</button></div>`;
+  }).join('');
+}
+
+function renderChart(entries,totalExp){
+  const exps=entries.filter(e=>e.type==='expense');
+  const noData=document.getElementById('noData'),catBreak=document.getElementById('catBreakdown');
+  if(!exps.length){noData.style.display='block';catBreak.innerHTML='';document.getElementById('pieLegend').innerHTML='';if(pieChart){pieChart.destroy();pieChart=null;}return;}
+  noData.style.display='none';
+  const bycat={};
+  exps.forEach(e=>{bycat[e.cat]=(bycat[e.cat]||0)+e.amt;});
+  const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
+  const labels=sorted.map(([id])=>getCat(id).name);
+  const data=sorted.map(([,v])=>v);
+  const colors=sorted.map(([id])=>getCat(id).color);
+  const emojis=sorted.map(([id])=>getCat(id).emoji);
+  const ctx=document.getElementById('pieChart').getContext('2d');
+  if(pieChart)pieChart.destroy();
+  pieChart=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'transparent',hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.raw)} (${(ctx.raw/totalExp*100).toFixed(1)}%)`}}}}});
+  document.getElementById('pieLegend').innerHTML=sorted.map(([id,amt],i)=>`<div class="legend-row"><div class="legend-dot" style="background:${colors[i]}"></div><span class="legend-name">${labels[i]}</span><span class="legend-pct">${(amt/totalExp*100).toFixed(1)}%</span><span class="legend-amt">${fmt(amt)}</span></div>`).join('');
+  const maxAmt=data[0]||1;
+  catBreak.innerHTML=sorted.map(([id,amt],i)=>`<div class="cat-row"><div class="cat-emoji">${emojis[i]}</div><div class="cat-info"><div class="cat-name">${labels[i]}</div><div class="cat-bar-wrap"><div class="cat-bar" style="width:${(amt/maxAmt*100).toFixed(1)}%;background:${colors[i]}"></div></div></div><div style="text-align:right"><div class="cat-amt">${fmt(amt)}</div><div class="cat-pct">${(amt/totalExp*100).toFixed(1)}%</div></div></div>`).join('');
+}
+
+function switchTab(t){['add','txns','chart'].forEach((id,i)=>{document.querySelectorAll('.tab')[i].classList.toggle('active',id===t);document.getElementById('tab-'+id).classList.toggle('active',id===t);});}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);}
+</script>
+</body>
+</html>
